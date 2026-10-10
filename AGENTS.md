@@ -31,8 +31,6 @@ Nothing enforces these automatically yet. Check by hand:
 - **Prompt edits** — re-read for the four signals still being operational, and for new negations that lack a positive counterpart.
 - **Generated nodes** — run criteria 1–7 in `curriculum-architect.md`. Criteria 2–4 are the silent failures; they parse cleanly and break at runtime.
 
-Not a git repository, so content edits are unrecoverable. Confirm before overwriting a prompt file.
-
 ## Open decisions
 
 Unresolved. Settle before building on them.

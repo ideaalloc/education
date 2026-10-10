@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Socratic Algebra Tutor — K-12 Sample Session</title>
+<style>
+  :root {
+    --bg: #f6f5f1;
+    --panel: #ffffff;
+    --ink: #22201c;
+    --ink-soft: #6b6659;
+    --line: #e4e1d8;
+    --accent: #2f6f4e;
+    --accent-soft: #e3efe8;
+    --tutor: #ffffff;
+    --student: #e8eef7;
+    --signal-correct: #2f6f4e;
+    --signal-partial: #9a6b1f;
+    --signal-gap: #a33b3b;
+    --signal-offpath: #5c5a8a;
+    --warn: #b23b3b;
+    --mono: "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    padding: 22px 28px 18px; border-bottom: 1px solid var(--line);
+    background: var(--panel);
+  }
+  header h1 { font-size: 20px; letter-spacing: -0.01em; }
+  header p { color: var(--ink-soft); font-size: 13px; margin-top: 4px; max-width: 780px; }
+  header .mx { font-size: 14px; }
+  .layout {
+    display: grid; grid-template-columns: 320px 1fr; gap: 20px;
+    max-width: 1240px; margin: 0 auto; padding: 20px 24px 60px;
+  }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px; margin-bottom: 16px;
+  }
+  .panel h2 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink-soft); margin-bottom: 10px;
+  }
+  /* State machine diagram */
+  .sm-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sm-chip {
+    font: 11px/1 var(--mono); padding: 7px 9px; border-radius: 6px;
+    border: 1px solid var(--line); color: var(--ink-soft); background: #faf9f5;
+    transition: all .15s;
+  }
+  .sm-chip.terminal { border-style: dashed; }
+  .sm-chip.active {
+    background: var(--accent); border-color: var(--accent); color: #fff;
+    font-weight: 600; box-shadow: 0 1px 4px rgba(47,111,78,.35);
+  }
+  .sm-chip.active.terminal { background: var(--ink); border-color: var(--ink); }
+  .sm-legend { font-size: 11px; color: var(--ink-soft); margin-top: 10px; }
+  /* Budgets */
+  .budget-row { margin-bottom: 10px; }
+  .budget-row .bl { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
+  .budget-row .bl b { font-family: var(--mono); font-weight: 600; }
+  .bar { height: 6px; background: #eeece4; border-radius: 3px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0%; background: var(--accent); border-radius: 3px; transition: width .3s; }
+  .budget-row.spent .bar i { background: var(--warn); }
+  .budget-row.spent .bl b { color: var(--warn); }
+  /* Signals legend */
+  .sig { display: flex; gap: 8px; align-items: baseline; margin-bottom: 6px; font-size: 12px; }
+  .sig code { font: 11px var(--mono); padding: 2px 6px; border-radius: 4px; color: #fff; flex-shrink: 0; }
+  .sig .desc { color: var(--ink-soft); }
+  /* Chat */
+  .chat-wrap { display: flex; flex-direction: column; min-height: 70vh; }
+  .problem-card {
+    background: linear-gradient(135deg, #2f3b52, #24304a); color: #fff;
+    border-radius: 10px; padding: 18px 20px; margin-bottom: 16px;
+  }
+  .problem-card .kicker { font-size: 11px; text-transform: uppercase; letter-spacing: .09em; opacity: .65; }
+  .problem-card .title { font-size: 17px; font-weight: 600; margin: 4px 0 2px; }
+  .problem-card .meta { font-size: 12px; opacity: .75; }
+  #transcript { flex: 1; }
+  .msg { margin-bottom: 14px; max-width: 88%; animation: rise .18s ease-out; }
+  @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
+  .msg.tutor { margin-right: auto; }
+  .msg.student { margin-left: auto; }
+  .bubble {
+    padding: 12px 15px; border-radius: 12px; font-size: 14.5px;
+    border: 1px solid var(--line);
+  }
+  .tutor .bubble { background: var(--tutor); border-bottom-left-radius: 4px; }
+  .student .bubble { background: var(--student); border-bottom-right-radius: 4px; border-color: #d4deed; }
+  .state-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    font: 10.5px var(--mono); color: var(--accent); background: var(--accent-soft);
+    padding: 2px 8px; border-radius: 10px; margin-bottom: 6px;
+  }
+  .state-tag.term { color: #fff; background: var(--ink); }
+  .classline {
+    font: 11.5px var(--mono); color: var(--ink-soft);
+    border-left: 3px solid var(--line); padding: 4px 0 4px 10px; margin: 10px 0 14px;
+  }
+  .classline b { font-weight: 600; }
+  .classline b.correct { color: var(--signal-correct); }
+  .classline b.partial { color: var(--signal-partial); }
+  .classline b.gap { color: var(--signal-gap); }
+  .classline b.off-path { color: var(--signal-offpath); }
+  .budgetline {
+    font: 11.5px var(--mono); color: var(--warn);
+    border-left: 3px solid #ecd6d6; padding: 4px 0 4px 10px; margin: -6px 0 14px;
+  }
+  .mx { font-family: Georgia, "Times New Roman", serif; font-style: italic; white-space: nowrap; }
+  .mx b { font-style: normal; }
+  .nodeid { font: 12px var(--mono); background: #f1efe7; padding: 1px 6px; border-radius: 4px; font-style: normal; }
+  /* Choices */
+  #choices { padding-top: 6px; }
+  #choices .prompt { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); margin-bottom: 8px; }
+  .choice {
+    display: block; width: 100%; text-align: left; cursor: pointer;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 9px;
+    padding: 11px 14px; margin-bottom: 8px; font: 14px/1.45 inherit; color: var(--ink);
+    transition: border-color .12s, background .12s;
+  }
+  .choice:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .choice .tag {
+    display: inline-block; font: 10px var(--mono); padding: 1px 6px; border-radius: 4px;
+    margin-right: 8px; color: #fff; vertical-align: 1px;
+  }
+  .tag.correct { background: var(--signal-correct); }
+  .tag.partial { background: var(--signal-partial); }
+  .tag.gap { background: var(--signal-gap); }
+  .tag.off-path { background: var(--signal-offpath); }
+  .tag.neutral { background: #b9b4a6; }
+  .restart {
+    margin-top: 10px; background: none; border: 1px dashed var(--line); color: var(--ink-soft);
+    border-radius: 9px; padding: 9px 14px; cursor: pointer; font: 12.5px inherit; width: 100%;
+  }
+  .restart:hover { border-color: var(--ink-soft); color: var(--ink); }
+  /* JSON panel */
+  details.json pre {
+    font: 11.5px/1.5 var(--mono); background: #24282f; color: #d8dee9;
+    padding: 14px; border-radius: 8px; overflow-x: auto; margin-top: 8px;
+  }
+  details.json summary { cursor: pointer; font-size: 12px; color: var(--ink-soft); }
+  .footnote { font-size: 11.5px; color: var(--ink-soft); margin-top: 10px; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Socratic Algebra Tutor <span style="color:var(--ink-soft);font-weight:400">· K-12 sample session</span></h1>
+  <p>
+    A deterministic walk-through of the tutor contract in <span class="nodeid">socratic_tutoring/</span>.
+    Every branch keys off one of the four observable signals
+    (<b>correct / partial / gap / off-path</b>); every loop counts against a budget; every state has an outbound
+    transition. The same student choice always produces the same transition — that determinism is the product.
+  </p>
+</header>
+
+<div class="layout">
+  <!-- LEFT: instrumentation -->
+  <aside>
+    <div class="panel">
+      <h2>State machine</h2>
+      <div class="sm-grid" id="smGrid"></div>
+      <div class="sm-legend">Dashed chips are terminal. Green = current state.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Budgets (per problem)</h2>
+      <div id="budgets"></div>
+      <div class="sm-legend">Exhaustion escalates down the table: hints → breakdown, counterfactuals → breakdown, breakdown → ESCALATE, off-path ×3 → ESCALATE.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Classification signals</h2>
+      <div class="sig"><code style="background:var(--signal-correct)">correct</code><span class="desc">states the target relation <i>and</i> applies it to the given quantities</span></div>
+      <div class="sig"><code style="background:var(--signal-partial)">partial</code><span class="desc">workable method, misapplied or stopped short</span></div>
+      <div class="sig"><code style="background:var(--signal-gap)">gap</code><span class="desc">method that cannot yield the relation, or a false assertion</span></div>
+      <div class="sig"><code style="background:var(--signal-offpath)">off-path</code><span class="desc">answer demand, off-topic, distress, empty</span></div>
+      <div class="sm-legend">When two fit, take the weaker one — gap over partial over correct.</div>
+    </div>
+
+    <div class="panel details json">
+      <h2>Curriculum node (architect output)</h2>
+      <details class="json">
+        <summary>algebra-two-step-linear.json</summary>
+        <pre id="nodeJson"></pre>
+      </details>
+      <div class="footnote">
+        Emitted by Agent 2 under the topic-node contract in <span class="nodeid">curriculum-architect.md</span>.
+        Its <span class="mx">routes_to_state</span> values name states in <span class="nodeid">state-machine.md</span> (criterion 4).
+      </div>
+    </div>
+  </aside>
+
+  <!-- RIGHT: session -->
+  <main class="chat-wrap">
+    <div class="problem-card">
+      <div class="kicker">Node · algebra-two-step-linear · Grades 6–8</div>
+      <div class="title">Solve for <span class="mx">x</span>:&nbsp; <span class="mx" style="font-size:19px">3x + 7 = 22</span></div>
+      <div class="meta">Target relation: undo operations in reverse order — <span class="mx">+7</span> then <span class="mx">×3</span>. Prerequisite: <span class="mx">solve-one-step-addition</span>.</div>
+    </div>
+
+    <div id="transcript"></div>
+    <div id="choices"></div>
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   Curriculum node — exactly the contract from curriculum-architect.md
+   ============================================================ */
+const CURRICULUM_NODE = {
+  id: "algebra-two-step-linear",
+  title: "Two-step linear equations: reverse order of operations",
+  domain: "K-12 algebra (grades 6–8)",
+  prerequisites: [
+    { id: "solve-one-step-addition", why: "undoing a single addition is the inner skill of the two-step unwind" },
+    { id: "order-of-operations", why: "reversing PEMDAS is the target relation; forward order must be solid first" }
+  ],
+  diagnostic_probe: {
+    tiers: [
+      { tier: 1, prompt: "Solve for x: 3x + 7 = 22. What is your first move, and what follows it?", target_relation: "x = \\frac{22 - 7}{3}" }
+    ],
+    misconceptions: [
+      {
+        id: "subtract-coefficient",
+        description: "Believes subtracting the coefficient 3 from both sides advances toward isolating x",
+        observable: "Student proposes 'subtract 3 from both sides' as the first move",
+        routes_to_state: "DEBUG_MISCONCEPTION",
+        routes_to_node: null
+      },
+      {
+        id: "divide-first-drag",
+        description: "Divides both sides by 3 first, dragging the +7 into a fraction instead of unwrapping the outer layer",
+        observable: "Student proposes 'divide both sides by 3' before removing the +7",
+        routes_to_state: "SCAFFOLD_HINT",
+        routes_to_node: null
+      },
+      {
+        id: "missing-inverse",
+        description: "One-step inverse operation (undoing addition) not consolidated",
+        observable: "Student cannot solve y + 7 = 15 when the breakdown sub-problem is posed",
+        routes_to_state: "ESCALATE",
+        routes_to_node: "solve-one-step-addition"
+      }
+    ]
+  },
+  state_trigger_map: [
+    { when: "hints exhausted (2/2) on the two-step unwind", state: "BREAKDOWN_SUBPROBLEM", node: null },
+    { when: "breakdown sub-problem y + 7 = 15 also blocked", state: "ESCALATE", node: "solve-one-step-addition" },
+    { when: "transfer holds on 4(x − 2) = 20", state: "MASTERY", node: "algebra-linear-multi-step" }
+  ],
+  socratic_anchors: [
+    "Which layer wraps x outermost in 3x + 7 — the ×3 or the +7?",
+    "What single operation cancels 'added 7', and what does it leave on the left side?",
+    "If you divided by 3 first, where would the 7 go — and could you still read x off?",
+    "In 4(x − 2) = 20, what plays the role of the outer wrap now?",
+    "Does your value satisfy the original equation — substitute and check."
+  ]
+};
+
+/* ============================================================
+   Dialogue graph. Deterministic: each choice carries its signal
+   classification and an explicit transition per state-machine.md.
+   ============================================================ */
+const MX = s => `<span class="mx">${s}</span>`;
+
+const GRAPH = {
+  /* ---------- INIT_ASSESS ---------- */
+  ia1: {
+    state: "INIT_ASSESS",
+    tutor: `Before touching any numbers: what has to happen to ${MX("<i>x</i>")} to get it alone in ${MX("3<i>x</i> + 7 = 22")}? Talk me through your moves — first one, then what follows.`,
+    choices: [
+      { text: "Undo the +7 first — subtract 7 from both sides — then undo the ×3 by dividing both sides by 3.",
+        signal: "correct", why: "states the target relation and applies it to the given quantities", next: "cd1" },
+      { text: "Divide both sides by 3.",
+        signal: "partial", why: "workable operation, but applied before removing the outer +7 layer", next: "sh1", inc: "hints" },
+      { text: "Subtract 3 from both sides first to get rid of the x term.",
+        signal: "gap", why: "asserts a move that cannot isolate x — subtracting the coefficient leaves 3x − 3", next: "dm1", inc: "counterfactuals" },
+      { text: "Can you just tell me the answer?",
+        signal: "off-path", why: "answer demand — nothing classifiable about the domain", next: "opDemand", inc: "offPath" },
+      { text: "Do you play video games?",
+        signal: "off-path", why: "off-topic — nothing classifiable about the domain", next: "opTopic", inc: "offPath" },
+      { text: "I'm going to fail this. I'm just bad at math.",
+        signal: "off-path", why: "distress / self-criticism", next: "opDistress", inc: "offPath" }
+    ]
+  },
+
+  /* ---------- SCAFFOLD_HINT ---------- */
+  sh1: {
+    state: "SCAFFOLD_HINT", tag: "hint",
+    tutor: `Dividing is a real move — but watch what it drags along: the ${MX("+7")}. Think of ${MX("3<i>x</i> + 7")} as a wrapped gift: ${MX("<i>x</i>")} got multiplied by 3, then the whole thing got ${MX("+7")} wrapped around it. When you unwrap a gift, which layer comes off first?`,
+    choices: [
+      { text: "The +7 layer — subtract 7 from both sides first.",
+        signal: "correct", why: "student advances — outer layer identified", next: "ia2", note: "student advances → INIT_ASSESS" },
+      { text: "I still don't see why dividing first is wrong.",
+        signal: "partial", why: "method still misapplied after this hint",
+        inc: ctx => ctx.budgets.hints >= 2 ? "breakdowns" : "hints",
+        next: ctx => ctx.budgets.hints >= 2 ? "bd1" : "sh2",
+        budgetEvent: ctx => ctx.budgets.hints >= 2 ? "Hints 2/2 → BREAKDOWN_SUBPROBLEM" : null }
+    ]
+  },
+  sh2: {
+    state: "SCAFFOLD_HINT", tag: "hint 2/2",
+    tutor: `Different angle: the ${MX("+7")} means 7 was added <i>last</i>, so it sits on the outside. What single operation cancels "added 7" — and if you did it to both sides, what would be left on the left?`,
+    choices: [
+      { text: "Subtracting 7 — that leaves just 3x. So subtract 7 first, then divide by 3.",
+        signal: "correct", why: "student advances — full sequence reconstructed", next: "ia2", note: "student advances → INIT_ASSESS" },
+      { text: "I'm still stuck.",
+        signal: "partial", why: "hint budget exhausted (2/2)", next: "bd1", budgetEvent: "Hints 2/2 → BREAKDOWN_SUBPROBLEM", inc: "breakdowns" }
+    ]
+  },
+  sh3: {
+    state: "SCAFFOLD_HINT", tag: "hint 1/2 · after breakdown",
+    tutor: `${MX("<i>y</i> = 8")} — and notice your move: subtracting 7 undid the addition. Now compare: ${MX("<i>y</i> + 7 = 15")} and ${MX("3<i>x</i> + 7 = 22")} have the same shape, but the second one has an extra layer. What is different about the ${MX("3<i>x</i>")}, and what does that add to your sequence?`,
+    choices: [
+      { text: "The 3x means x is also multiplied by 3 — so after subtracting 7, I divide by 3 too.",
+        signal: "correct", why: "student advances — sub-skill reconnected to parent problem", next: "ia2", note: "student advances → INIT_ASSESS" },
+      { text: "I'm still confused about which problem we're on.",
+        signal: "partial", why: "second hint, different angle", next: "sh2", inc: "hints" }
+    ]
+  },
+  sh4: {
+    state: "SCAFFOLD_HINT", tag: "hint · edge case",
+    tutor: `Same gift logic on the new problem: here ${MX("(<i>x</i> − 2)")} is the gift and the ${MX("×4")} is the wrap around it. Which layer comes off first — and what does that leave you with?`,
+    choices: [
+      { text: "The ×4 wrap — divide both sides by 4: x − 2 = 5.",
+        signal: "correct", why: "student advances — outer wrap undone", next: "ia5", note: "student advances → INIT_ASSESS (on the edge case)" },
+      { text: "Still lost.",
+        signal: "partial", why: "still stuck after the hint on the edge case",
+        inc: ctx => ctx.budgets.hints >= 2 ? "breakdowns" : "hints",
+        next: ctx => ctx.budgets.hints >= 2 ? "bd1" : "sh4b",
+        budgetEvent: ctx => ctx.budgets.hints >= 2 ? "Hints 2/2 → BREAKDOWN_SUBPROBLEM" : null }
+    ]
+  },
+  sh4b: {
+    state: "SCAFFOLD_HINT", tag: "hint 2/2 · edge case",
+    tutor: `Different angle: ${MX("4(<i>x</i> − 2) = 20")}. Ask what ${MX("(<i>x</i> − 2)")} must equal — if 4 copies of something make 20, what is one copy?`,
+    choices: [
+      { text: "One copy is 5 — so x − 2 = 5.",
+        signal: "correct", why: "student advances — outer wrap undone", next: "ia5", note: "student advances → INIT_ASSESS (on the edge case)" },
+      { text: "I still can't.",
+        signal: "partial", why: "hint budget exhausted (2/2)", next: "bd1", inc: "breakdowns",
+        budgetEvent: "Hints 2/2 → BREAKDOWN_SUBPROBLEM" }
+    ]
+  },
+  sh5: {
+    state: "SCAFFOLD_HINT", tag: "hint 2/2 · edge case",
+    tutor: `Almost — the ${MX("− 2")} still wraps ${MX("<i>x</i>")}. In ${MX("<i>x</i> − 2 = 5")}, what single operation clears the ${MX("− 2")}?`,
+    choices: [
+      { text: "Add 2 to both sides — that clears it and leaves x alone.",
+        signal: "correct", why: "student advances — inverse operation named", next: "ia5", note: "student advances → INIT_ASSESS" },
+      { text: "I still can't.",
+        signal: "partial", why: "hint budget exhausted (2/2)", next: "bd1", inc: "breakdowns",
+        budgetEvent: "Hints 2/2 → BREAKDOWN_SUBPROBLEM" }
+    ]
+  },
+
+  /* ---------- INIT_ASSESS (re-pose) ---------- */
+  ia2: {
+    state: "INIT_ASSESS",
+    tutor: `Good — undoing the outer layer first. Now put the whole thing together: full sequence for ${MX("3<i>x</i> + 7 = 22")}, and what does ${MX("<i>x</i>")} equal?`,
+    choices: [
+      { text: "Subtract 7 from both sides → 3x = 15; divide both sides by 3 → x = 5.",
+        signal: "correct", why: "target relation stated and applied with no unjustified step", next: "cd1" },
+      { text: "Divide by 3, then subtract 7?",
+        signal: "partial", why: "order still inverted",
+        inc: ctx => ctx.budgets.hints >= 2 ? "breakdowns" : "hints",
+        next: ctx => ctx.budgets.hints >= 2 ? "bd1" : "sh1",
+        budgetEvent: ctx => ctx.budgets.hints >= 2 ? "Hints already exhausted (2/2) → BREAKDOWN_SUBPROBLEM" : null },
+      { text: "Subtract 22 from both sides so the right side is 0?",
+        signal: "gap", why: "asserts a move that cannot isolate x",
+        inc: ctx => ctx.budgets.counterfactuals >= 2 ? "breakdowns" : "counterfactuals",
+        next: ctx => ctx.budgets.counterfactuals >= 2 ? "bd1" : "dm1",
+        budgetEvent: ctx => ctx.budgets.counterfactuals >= 2 ? "Counterfactuals already exhausted (2/2) → BREAKDOWN_SUBPROBLEM" : null }
+    ]
+  },
+  ia4: {
+    state: "INIT_ASSESS", tag: "on the edge case",
+    tutor: `Test that move before committing: what do you actually get when you subtract 2 from ${MX("4(<i>x</i> − 2)")}? Does the parenthesis survive?`,
+    choices: [
+      { text: "No — the 4 still multiplies whatever's inside. I need to divide by 4 first, or distribute.",
+        signal: "correct", why: "refutes own move, names the valid routes", next: "cd2" },
+      { text: "I guess that doesn't work here.",
+        signal: "partial", why: "concedes without naming the valid method",
+        inc: ctx => ctx.budgets.hints >= 2 ? "breakdowns" : "hints",
+        next: ctx => ctx.budgets.hints >= 2 ? "bd1" : "sh4",
+        budgetEvent: ctx => ctx.budgets.hints >= 2 ? "Hints already exhausted (2/2) → BREAKDOWN_SUBPROBLEM" : null }
+    ]
+  },
+  ia5: {
+    state: "INIT_ASSESS", tag: "on edge case",
+    tutor: `Right — the outer wrap comes off first. Now finish it: what does ${MX("<i>x</i>")} equal in ${MX("4(<i>x</i> − 2) = 20")}?`,
+    choices: [
+      { text: "Add 2 to both sides — x = 7.",
+        signal: "correct", why: "target relation applied through to the value", next: "cd2" },
+      { text: "x − 2 = 5 … so x = 3?",
+        signal: "partial", why: "tries to undo the −2 but applies the wrong operation",
+        inc: ctx => ctx.budgets.hints >= 2 ? "breakdowns" : "hints",
+        next: ctx => ctx.budgets.hints >= 2 ? "bd1" : "sh5",
+        budgetEvent: ctx => ctx.budgets.hints >= 2 ? "Hints already exhausted (2/2) → BREAKDOWN_SUBPROBLEM" : null }
+    ]
+  },
+
+  /* ---------- DEBUG_MISCONCEPTION ---------- */
+  dm1: {
+    state: "DEBUG_MISCONCEPTION", tag: "counterfactual",
+    tutor: `Let's test that move before you commit to it. If you subtract 3 from both sides of ${MX("3<i>x</i> + 7 = 22")}, what does the term with ${MX("<i>x</i>")} become — and is ${MX("<i>x</i>")} any closer to standing alone?`,
+    choices: [
+      { text: "It becomes 3x − 3 … x is still trapped. The 7 is in the way — I should subtract 7 first.",
+        signal: "correct", why: "student self-corrects — retracts the false step", next: "ia2", note: "student self-corrects → INIT_ASSESS" },
+      { text: "It's fine — I can fix it up later.",
+        signal: "gap", why: "misconception survives this counterfactual",
+        inc: ctx => ctx.budgets.counterfactuals >= 2 ? "breakdowns" : "counterfactuals",
+        next: ctx => ctx.budgets.counterfactuals >= 2 ? "bd1" : "dm2",
+        budgetEvent: ctx => ctx.budgets.counterfactuals >= 2 ? "Counterfactuals 2/2 → BREAKDOWN_SUBPROBLEM" : null }
+    ]
+  },
+  dm2: {
+    state: "DEBUG_MISCONCEPTION", tag: "counterfactual 2/2",
+    tutor: `Smaller case, same move: in ${MX("3<i>x</i> = 12")}, subtracting 3 gives ${MX("3<i>x</i> − 3 = 9")}. Can you read ${MX("<i>x</i>")} off that? What operation <i>would</i> isolate ${MX("<i>x</i>")} in ${MX("3<i>x</i> = 12")}?`,
+    choices: [
+      { text: "No … dividing by 3 gives x = 4. So in the big problem I subtract 7 first, then divide.",
+        signal: "correct", why: "student self-corrects under the second counterfactual", next: "ia2", note: "student self-corrects → INIT_ASSESS" },
+      { text: "I still think subtracting works.",
+        signal: "gap", why: "misconception survived 2 counterfactuals → it's a missing prerequisite",
+        next: "bd1", budgetEvent: "Counterfactuals 2/2 → BREAKDOWN_SUBPROBLEM (a misconception that survives refutation is a missing prerequisite)", inc: "breakdowns" }
+    ]
+  },
+
+  /* ---------- BREAKDOWN_SUBPROBLEM ---------- */
+  bd1: {
+    state: "BREAKDOWN_SUBPROBLEM", tag: "breakdown 1/1",
+    tutor: `Let's shrink the problem. From the dependency graph, the prerequisite is <span class="nodeid">solve-one-step-addition</span>:<br><br>
+      Solve ${MX("<i>y</i> + 7 = 15")}. What is ${MX("<i>y</i>")}, and what did you do to both sides to find it?`,
+    choices: [
+      { text: "Subtract 7 from both sides — y = 8.",
+        signal: "correct", why: "sub-problem solved — climb back with the hint budget reset", next: "sh3", note: "sub-problem solved → SCAFFOLD_HINT, hints reset to 0", resetHints: true, inc: "hints" },
+      { text: "I don't know this one either.",
+        signal: "gap", why: "sub-problem also blocked — breakdown budget exhausted (1/1)", next: "escalate",
+        budgetEvent: "Breakdowns 1/1 + sub-problem blocked → ESCALATE" }
+    ]
+  },
+
+  /* ---------- CHALLENGE_DEEP ---------- */
+  cd1: {
+    state: "CHALLENGE_DEEP",
+    tutor: `That ordering is exactly right — and here's <i>why</i> it holds: ${MX("+7")} is the outer wrap, so it comes off first; dividing first would drag the 7 into a fraction. You named the reverse order of operations and applied it cleanly.<br><br>
+      Now a twist with the same structure: ${MX("4(<i>x</i> − 2) = 20")}. What's your first move?`,
+    choices: [
+      { text: "Divide both sides by 4 first: x − 2 = 5, then x = 7. Check: 4(7 − 2) = 4·5 = 20 ✓.",
+        signal: "correct", why: "transfer holds — outer wrap identified on the new form, verified by substitution", next: "mastery" },
+      { text: "Distribute: 4x − 8 = 20, then add 8 and divide by 4 — x = 7. Check: 4(7 − 2) = 20 ✓.",
+        signal: "correct", why: "transfer holds via a second valid route, verified by substitution", next: "mastery" },
+      { text: "Subtract 2 from both sides first.",
+        signal: "gap", why: "transfer breaks — same subtract-the-inside error, new clothing", next: "ia4", note: "transfer breaks → INIT_ASSESS on the edge case" }
+    ]
+  },
+  cd2: {
+    state: "CHALLENGE_DEEP", tag: "edge case",
+    tutor: `Right. Now finish the transfer: what's ${MX("<i>x</i>")} in ${MX("4(<i>x</i> − 2) = 20")} — and check it. Does your value satisfy the <i>original</i> equation?`,
+    choices: [
+      { text: "x = 7. Check: 4(7 − 2) = 4·5 = 20 ✓.",
+        signal: "correct", why: "transfer holds and self-verified by substitution", next: "mastery" },
+      { text: "x = 7 … but I don't know how to check it.",
+        signal: "partial", why: "result stated, verification step missing", next: "cd2b" }
+    ]
+  },
+  cd2b: {
+    state: "CHALLENGE_DEEP", tag: "verification",
+    tutor: `The check is one substitution: put ${MX("<i>x</i> = 7")} into ${MX("4(<i>x</i> − 2)")} and evaluate. What do you get — and does it match the right-hand side?`,
+    choices: [
+      { text: "4(7 − 2) = 4·5 = 20. It matches ✓.",
+        signal: "correct", why: "verification completed", next: "mastery" }
+    ]
+  },
+
+  /* ---------- OFF_PATH ---------- */
+  opDemand: {
+    state: "OFF_PATH", tag: "answer demand",
+    tutor: `I'm not going to hand you ${MX("<i>x</i>")} — that's the exact rep that builds the skill, and you'd feel it in ten minutes on the quiz. But I also won't leave you stuck. Here's the doorway: in ${MX("3<i>x</i> + 7 = 22")}, which is wrapped <i>outermost</i> around ${MX("<i>x</i>")} — the ${MX("×3")} or the ${MX("+7")}?`,
+    choices: [
+      { text: "The +7 is outermost — so subtract 7 first.",
+        signal: "correct", why: "domain progress — back to assessment", next: "ia2", note: "re-pose the assessment question → INIT_ASSESS", resetOffPath: true },
+      { text: "Seriously. Just tell me x.",
+        signal: "off-path", why: "answer demand repeats — nothing classifiable about the domain",
+        inc: "offPath",
+        next: ctx => ctx.budgets.offPath >= 2 ? "escalateOff" : "opDemand2",
+        budgetEvent: ctx => ctx.budgets.offPath >= 2 ? "Off-path returns 3/3 → ESCALATE" : null }
+    ]
+  },
+  opDemand2: {
+    state: "OFF_PATH", tag: "answer demand · 2",
+    tutor: `The boundary stands — the answer is yours to find, and you're one subtraction away from finding it. Smallest possible version: ${MX("3<i>x</i> + 7")} minus 7 leaves what on the left side?`,
+    choices: [
+      { text: "3x.",
+        signal: "partial", why: "domain progress — back to assessment", next: "ia2", note: "re-pose the assessment question → INIT_ASSESS", resetOffPath: true },
+      { text: "…",
+        signal: "off-path", why: "empty response — third consecutive off-path return with no domain progress",
+        inc: "offPath", next: "escalateOff",
+        budgetEvent: "Off-path returns 3/3 → ESCALATE" }
+    ]
+  },
+  opTopic: {
+    state: "OFF_PATH", tag: "off-topic",
+    tutor: `Maybe later! Right now the only boss fight is ${MX("3<i>x</i> + 7 = 22")}. One redirect: which is wrapped outermost around ${MX("<i>x</i>")} — the ${MX("×3")} or the ${MX("+7")}?`,
+    choices: [
+      { text: "The +7 — so I subtract 7 first.",
+        signal: "correct", why: "domain progress after one redirect", next: "ia2", note: "one redirect naming the problem → INIT_ASSESS", resetOffPath: true },
+      { text: "Whatever. What's x?",
+        signal: "off-path", why: "redirect deflected into an answer demand", next: "opDemand", inc: "offPath" }
+    ]
+  },
+  opDistress: {
+    state: "OFF_PATH", tag: "distress · 1 of 2",
+    tutor: `That feeling is real, and it isn't a verdict — it's a sign the problem is too big, not that you can't. So we shrink it. Forget ${MX("3<i>x</i> + 7 = 22")} for a second: in ${MX("<i>y</i> + 7 = 15")}, what operation takes the ${MX("+7")} away?`,
+    choices: [
+      { text: "Subtract 7 … y = 8. Okay, that one I can do.",
+        signal: "correct", why: "distress acknowledged, dropped to a finishable sub-problem, finished it", next: "bd1", note: "distress → drop to an easier sub-problem → BREAKDOWN_SUBPROBLEM", resetOffPath: true, inc: "breakdowns" },
+      { text: "It's pointless. I can't do any of it.",
+        signal: "off-path", why: "second consecutive turn of distress", next: "escalateDistress",
+        budgetEvent: "Second consecutive distress turn → ESCALATE" }
+    ]
+  },
+
+  /* ---------- Terminals ---------- */
+  escalate: {
+    state: "ESCALATE", terminal: true, tag: "prerequisite gap",
+    tutor: `Let's stop here — more reps today would just be noise. The specific gap, named: <b>one-step inverse operations — undoing an addition to isolate a variable — are not yet consolidated</b>, and that sits upstream of every two-step equation. I've recorded it on the session, so a human or your next session starts there instead of re-diagnosing.<br><br>
+      Next step: node <span class="nodeid">solve-one-step-addition</span>. Stopping here is a redirect, not a failure.`,
+    choices: []
+  },
+  escalateOff: {
+    state: "ESCALATE", terminal: true, tag: "off-path budget",
+    tutor: `Let's stop here — three turns in a row have left the problem (answer demands, off-topic, or nothing at all), so more reps today would just be noise. I'll record what happened on the session: <b>no content gap was diagnosed — what's recorded is the pattern of disengagement, turn by turn</b>, so a human reviews it instead of guessing. Next step is a check-in, not a harder problem. Stopping here is a redirect, not a failure.`,
+    choices: []
+  },
+  escalateDistress: {
+    state: "ESCALATE", terminal: true, tag: "distress · 2 of 2",
+    tutor: `Let's stop here — two turns in a row said this feels pointless, and pushing another rep against that feeling would teach the wrong lesson. I'll record it on the session: <b>the flag is confidence, not content — no misconception was diagnosed</b>, so a human starts there instead of re-diagnosing. When you're ready, node <span class="nodeid">solve-one-step-addition</span> is a small win to rebuild from. Stopping here is a redirect, not a failure.`,
+    choices: []
+  },
+  escalateBudget: {
+    state: "ESCALATE", terminal: true, tag: "budgets spent",
+    tutor: `Let's stop here — the fallbacks are spent: this problem's one breakdown has been used, and another loop just exhausted on top of it. I'll record on the session: <b>the two-step unwind isn't consolidating even though the prerequisite sub-problem checked out earlier</b> — a composition gap, not a missing prerequisite. A human reviews next. Stopping here is a redirect, not a failure.`,
+    choices: []
+  },
+  mastery: {
+    state: "MASTERY", terminal: true,
+    tutor: `Mastery — here's what you demonstrated, and the condition it held under: you unwound ${MX("3<i>x</i> + 7 = 22")} in reverse order of operations, and the reasoning <b>transferred</b> to the parenthesised form ${MX("4(<i>x</i> − 2) = 20")} — you solved the new form and verified by substitution.<br><br>
+      Problem closed. Next node the dependency graph points to: <span class="nodeid">algebra-linear-multi-step</span> — variables on both sides.`,
+    choices: []
+  }
+};
+
+/* ============================================================
+   Engine — budgets, classification log, rendering
+   ============================================================ */
+const STATES = ["INIT_ASSESS","SCAFFOLD_HINT","BREAKDOWN_SUBPROBLEM","DEBUG_MISCONCEPTION","CHALLENGE_DEEP","OFF_PATH","ESCALATE","MASTERY"];
+const TERMINALS = new Set(["ESCALATE","MASTERY"]);
+const BUDGET_LIMITS = { hints: 2, counterfactuals: 2, breakdowns: 1, offPath: 3 };
+const BUDGET_LABELS = { hints: "Hints", counterfactuals: "Counterfactuals", breakdowns: "Breakdowns", offPath: "Off-path returns" };
+
+const ctx = { budgets: { hints:0, counterfactuals:0, breakdowns:0, offPath:0 } };
+let current = null;
+
+const $ = id => document.getElementById(id);
+const transcript = $("transcript"), choicesEl = $("choices");
+
+function renderStatic() {
+  // state chips
+  $("smGrid").innerHTML = STATES.map(s =>
+    `<span class="sm-chip ${TERMINALS.has(s) ? "terminal" : ""}" id="chip-${s}">${s}</span>`).join("");
+  // budgets
+  $("budgets").innerHTML = Object.keys(BUDGET_LIMITS).map(k => `
+    <div class="budget-row" id="brow-${k}">
+      <div class="bl"><span>${BUDGET_LABELS[k]}</span><b id="bval-${k}">0 / ${BUDGET_LIMITS[k]}</b></div>
+      <div class="bar"><i id="bbar-${k}"></i></div>
+    </div>`).join("");
+  // node json
+  $("nodeJson").textContent = JSON.stringify(CURRICULUM_NODE, null, 2);
+}
+
+function renderBudgets() {
+  for (const k of Object.keys(BUDGET_LIMITS)) {
+    const v = ctx.budgets[k], lim = BUDGET_LIMITS[k];
+    $("bval-" + k).textContent = `${v} / ${lim}`;
+    $("bbar-" + k).style.width = Math.min(100, v / lim * 100) + "%";
+    $("brow-" + k).classList.toggle("spent", v >= lim);
+  }
+}
+
+function renderState(state) {
+  for (const s of STATES) $("chip-" + s).classList.toggle("active", s === state);
+}
+
+function addTutor(node) {
+  const div = document.createElement("div");
+  div.className = "msg tutor";
+  const term = node.terminal ? " term" : "";
+  div.innerHTML = `<div class="bubble">
+      <span class="state-tag${term}">${node.state}${node.tag ? " · " + node.tag : ""}</span><br>
+      ${node.tutor}
+    </div>`;
+  transcript.appendChild(div);
+}
+
+function addStudent(text) {
+  const div = document.createElement("div");
+  div.className = "msg student";
+  div.innerHTML = `<div class="bubble">${text}</div>`;
+  transcript.appendChild(div);
+}
+
+function addSystem(html, cls) {
+  const div = document.createElement("div");
+  div.className = cls;
+  div.innerHTML = html;
+  transcript.appendChild(div);
+}
+
+function showNode(id) {
+  current = id;
+  const node = GRAPH[id];
+  renderState(node.state);
+  addTutor(node);
+  choicesEl.innerHTML = "";
+  if (node.terminal || node.choices.length === 0) {
+    choicesEl.innerHTML = `<button class="restart" onclick="restart()">↺ Restart session</button>`;
+    scrollDown(); return;
+  }
+  const label = document.createElement("div");
+  label.className = "prompt";
+  label.textContent = "Your turn — pick a student response (signal tags shown for the demo)";
+  choicesEl.appendChild(label);
+  node.choices.forEach((c, i) => {
+    const b = document.createElement("button");
+    b.className = "choice";
+    b.innerHTML = `<span class="tag ${c.signal}">${c.signal}</span>${c.text}`;
+    b.onclick = () => takeChoice(node, c);
+    choicesEl.appendChild(b);
+  });
+  const r = document.createElement("button");
+  r.className = "restart"; r.textContent = "↺ Restart session"; r.onclick = restart;
+  choicesEl.appendChild(r);
+  scrollDown();
+}
+
+function takeChoice(node, c) {
+  addStudent(c.text);
+  // classification line — the observable test, not an impression
+  addSystem(`classified: <b class="${c.signal}">${c.signal}</b> — ${c.why}`, "classline");
+
+  // budget effects: reset first; then every routing decision reads the
+  // pre-increment budgets, so a limit means "already exhausted before this turn".
+  if (c.resetHints) ctx.budgets.hints = 0;
+  if (c.resetOffPath) ctx.budgets.offPath = 0;
+  const inc = typeof c.inc === "function" ? c.inc(ctx) : c.inc;
+  let nextId = typeof c.next === "function" ? c.next(ctx) : c.next;
+  let be = typeof c.budgetEvent === "function" ? c.budgetEvent(ctx) : c.budgetEvent;
+
+  // budget guard: BREAKDOWN_SUBPROBLEM is the fallback for exhausted loops, but
+  // its own budget is 1 — once spent, further exhaustion must ESCALATE instead
+  // (state-machine.md, budget table).
+  if (nextId === "bd1" && ctx.budgets.breakdowns >= BUDGET_LIMITS.breakdowns) {
+    nextId = "escalateBudget";
+    be = (be ? be + " — but " : "") + "Breakdowns 1/1 → ESCALATE";
+  }
+
+  if (inc) ctx.budgets[inc] = Math.min(BUDGET_LIMITS[inc], ctx.budgets[inc] + 1);
+  renderBudgets();
+
+  if (be) addSystem(`⚠ budget: ${be}`, "budgetline");
+  if (c.note) addSystem(`transition: ${c.note}`, "classline");
+
+  showNode(nextId);
+}
+
+function scrollDown() { window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); }
+
+function restart() {
+  ctx.budgets = { hints:0, counterfactuals:0, breakdowns:0, offPath:0 };
+  transcript.innerHTML = ""; choicesEl.innerHTML = "";
+  renderBudgets();
+  showNode("ia1");
+}
+
+renderStatic();
+renderBudgets();
+showNode("ia1");
+</script>
+</body>
+</html>
