@@ -36,6 +36,7 @@ Nothing enforces these automatically yet. Check by hand:
 Unresolved. Settle before building on them.
 
 - **Node schema enforcement.** `node.schema.json` is unwritten; the field list in `curriculum-architect.md` is the interim contract. Criteria 1–4 are mechanically checkable once it exists.
-- **Escalation target.** `ESCALATE` records a gap and hands off, but nothing receives it. Needs a destination: human reviewer, queue, or prerequisite-node redirect.
-- **Mastery persistence.** `MASTERY` closes a problem; nothing carries it to the next session. Student state across sessions is undesigned.
+- **Escalation target.** `ESCALATE` records a gap and hands off, but nothing receives it. Needs a destination: human reviewer, queue, or prerequisite-node redirect. `research/parent-child-loop.md` argues the parent is the natural receiver; not settled.
+- **Mastery persistence.** `MASTERY` closes a problem; nothing carries it to the next session. Student state across sessions is undesigned. The parent brief in `research/parent-child-loop.md` is its first proposed consumer.
 - **Distress threshold.** Two consecutive turns of distress escalates. Whether that is the right sensitivity is untested against real sessions.
+- **Parent loop.** Whether the agent facilitates child–parent communication (daily conversation briefs, question relay, child-authored narration), and under what trust contract and capture boundary. Design note: `research/parent-child-loop.md`. Ambient always-on capture is rejected there; session-scoped capture and the consent asymmetry are unsettled.

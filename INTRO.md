@@ -34,6 +34,7 @@ The architect's nodes are "done" only when seven completion criteria hold — in
 | `socratic_tutoring/tutor.md` | Tutor system prompt + leakage boundary |
 | `socratic_tutoring/curriculum-architect.md` | Architect system prompt + node output contract |
 | `research/socratic-tutoring-business-model.md` | Market, unit economics, efficacy evidence, regulatory landscape |
+| `research/parent-child-loop.md` | Design note: parent as escalation target and brief recipient; trust contract; why not ambient capture |
 | `samples/algebra-socratic-demo.html` | A K-12 sample session rendered as a visual walkthrough |
 
 ## Why it might matter
@@ -50,5 +51,6 @@ Early and deliberately unresolved:
 - `ESCALATE` records a gap and hands off, but nothing receives it yet.
 - `MASTERY` closes a problem; nothing carries it to the next session.
 - The two-consecutive-turns distress threshold is untested against real sessions.
+- Whether a **parent loop** (daily conversation briefs, question relay, child-authored narration) becomes part of the product — see `research/parent-child-loop.md`. It would close both holes above at once.
 
 Since there's no automation, every edit is validated by hand against the six invariants in `AGENTS.md`.
