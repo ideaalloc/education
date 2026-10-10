@@ -35,6 +35,7 @@ The architect's nodes are "done" only when seven completion criteria hold — in
 | `socratic_tutoring/curriculum-architect.md` | Architect system prompt + node output contract |
 | `research/socratic-tutoring-business-model.md` | Market, unit economics, efficacy evidence, regulatory landscape |
 | `research/parent-child-loop.md` | Design note: parent as escalation target and brief recipient; trust contract; why not ambient capture |
+| `research/catechism-and-forensics.md` | Design note: catechism-as-interrogation vs rote; what the machine already implements; forensics as the missing mode |
 | `samples/algebra-socratic-demo.html` | A K-12 sample session rendered as a visual walkthrough |
 
 ## Why it might matter

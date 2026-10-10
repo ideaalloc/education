@@ -1,6 +1,6 @@
 # The Parent Loop: Facilitating Child–Parent Communication
 
-Design note responding to Jason's feedback (Oct 9th 2026): the agent should help parents and children talk to each other. Two directions he named — the agent figures out what the child did today and gives the parent material for a conversation, and the agent carries questions from the child to the parent.
+Design note responding to Jason's feedback (Oct 2026): the agent should help parents and children talk to each other. Two directions he named — the agent figures out what the child did today and gives the parent material for a conversation, and the agent carries questions from the child to the parent.
 
 ## Why this fits the existing design
 
